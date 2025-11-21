@@ -1,6 +1,6 @@
 # AlphaZero-OmniFive
 
-AlphaZero-OmniFive 將 AlphaZero 演算法套用在五子棋（Gomoku）上，完全依靠自對弈資料訓練策略價值網路，再結合蒙地卡羅樹搜索（MCTS）做決策。因為五子棋的狀態空間遠小於圍棋或西洋棋，只要一台具備 CUDA GPU 的桌機，在幾個小時內就能獲得具有競爭力的棋力。
+AlphaZero-OmniFive 將 AlphaZero 演算法套用在五子棋（Gomoku）上，完全依靠自對弈資料訓練策略價值網路，再結合蒙地卡羅樹搜索（MCTS）做決策。因為五子棋的狀態空間遠小於圍棋或西洋棋，只要一台具備 CUDA GPU 的PC，在幾個小時內就能獲得具有競爭力的棋力。
 
 #### AlphaGo 與 AlphaGo Zero 的差異
 
