@@ -6,6 +6,7 @@ An implementation of the training pipeline of AlphaZero for Gomoku
 """
 
 from __future__ import print_function
+import argparse
 import random
 import numpy as np
 from collections import defaultdict, deque
@@ -14,50 +15,53 @@ from game import Board, Game
 from mcts_pure import MCTSPlayer as MCTS_Pure
 from mcts_alphaZero import MCTSPlayer
 from policy_value_net_pytorch import PolicyValueNet  # Pytorch
+from config_loader import load_config, ConfigError
 
 
 class TrainPipeline():
-    def __init__(self, init_model=None):
-        # params of the board and the game
-        self.board_width = 8
-        self.board_height = 8
-        self.n_in_row = 5
+    def __init__(self, init_model=None, config_path="config.json"):
+        try:
+            self._config = load_config(config_path)
+        except ConfigError as exc:
+            raise RuntimeError(f"Failed to load configuration: {exc}") from exc
+
+        board_cfg = self._config.board
+        self.board_width = board_cfg.width
+        self.board_height = board_cfg.height
+        self.n_in_row = board_cfg.n_in_row
         self.board = Board(width=self.board_width,
                            height=self.board_height,
                            n_in_row=self.n_in_row)
         self.game = Game(self.board)
-        # training params
-        self.learn_rate = 2e-3
-        self.lr_multiplier = 1.0  # adaptively adjust the learning rate based on KL
-        self.temp = 1.0  # the temperature param
-        self.n_playout = 900  # num of simulations for each move
-        self.c_puct = 5
-        self.buffer_size = 20000
-        self.batch_size = 768  # mini-batch size for training
+
+        training_cfg = self._config.training
+        self.learn_rate = training_cfg.learn_rate
+        self.lr_multiplier = training_cfg.lr_multiplier  # adaptively adjust the learning rate based on KL
+        self.temp = training_cfg.temp  # the temperature param
+        self.n_playout = training_cfg.n_playout  # num of simulations for each move
+        self.c_puct = training_cfg.c_puct
+        self.buffer_size = training_cfg.buffer_size
+        self.batch_size = training_cfg.batch_size  # mini-batch size for training
         self.data_buffer = deque(maxlen=self.buffer_size)
-        self.play_batch_size = 2
-        self.epochs = 8  # num of train_steps for each update
-        self.kl_targ = 0.02
-        self.check_freq = 30
-        self.game_batch_num = 2500
+        self.play_batch_size = training_cfg.play_batch_size
+        self.epochs = training_cfg.epochs  # num of train_steps for each update
+        self.kl_targ = training_cfg.kl_targ
+        self.check_freq = training_cfg.check_freq
+        self.game_batch_num = training_cfg.game_batch_num
         self.best_win_ratio = 0.0
-        # num of simulations used for the pure mcts, which is used as
-        # the opponent to evaluate the trained policy
-        self.pure_mcts_playout_num = 2000
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA GPU is required to run training with PyTorch backend.")
-        self._use_gpu = True
-        if init_model:
-            # start training from an initial policy-value net
-            self.policy_value_net = PolicyValueNet(self.board_width,
-                                                   self.board_height,
-                                                   model_file=init_model,
-                                                   use_gpu=self._use_gpu)
-        else:
-            # start training from a new policy-value net
-            self.policy_value_net = PolicyValueNet(self.board_width,
-                                                   self.board_height,
-                                                   use_gpu=self._use_gpu)
+        self.pure_mcts_playout_num = training_cfg.pure_mcts_playout_num
+
+        self._use_gpu = training_cfg.use_gpu
+        if self._use_gpu and not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but was not detected. Set training.use_gpu=false in config.json to run on CPU.")
+
+        if isinstance(init_model, str) and not init_model.strip():
+            init_model = None
+        model_path = init_model if init_model is not None else training_cfg.init_model
+        self.policy_value_net = PolicyValueNet(self.board_width,
+                                               self.board_height,
+                                               model_file=model_path,
+                                               use_gpu=self._use_gpu)
         self.mcts_player = MCTSPlayer(self.policy_value_net.policy_value_fn,
                                       c_puct=self.c_puct,
                                       n_playout=self.n_playout,
@@ -193,6 +197,23 @@ class TrainPipeline():
             print('\n\rquit')
 
 
-if __name__ == '__main__':
-    training_pipeline = TrainPipeline()
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train AlphaZero-OmniFive using self-play.")
+    parser.add_argument(
+        "--config",
+        default="config.json",
+        help="Path to the JSON configuration file (default: config.json).",
+    )
+    parser.add_argument(
+        "--init-model",
+        default=None,
+        help="Optional path to an initial policy checkpoint overriding training.init_model.",
+    )
+    args = parser.parse_args()
+
+    training_pipeline = TrainPipeline(init_model=args.init_model, config_path=args.config)
     training_pipeline.run()
+
+
+if __name__ == '__main__':
+    main()
