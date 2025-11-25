@@ -11,11 +11,10 @@ AlphaZero-OmniFive 將 AlphaZero 演算法套用在五子棋（Gomoku）上，�
 
 ### 系統需求
 
-- 如果要遊玩需要下列套件
-  - python >= 2.7
-  - numpy >= 2.11
-- 如果要訓練模型需要下列套件
-  - Pytorch >= 0.4
+- Python >= 3.9
+- PyTorch >= 2.0（需支援 CUDA 的 GPU 驅動環境）
+- numpy >= 1.24
+- 建議安裝 [Ruff](https://docs.astral.sh/ruff/) 以配合推送前的靜態檢查（GitHub Actions 會在 push/pr 自動執行）。
 
 
 ### 初始設定
@@ -70,6 +69,12 @@ python train.py
 | `pure_mcts_playout_num` | 2000 | 評估時純 MCTS 對手的模擬次數，數值越高評測越嚴格。 |
 
 > 若遇到 GPU 記憶體不足，可先將 `batch_size` 調低到 512 或 384，並同步降低 `n_playout` 以縮短自對弈時間。
+
+### 開發建議流程
+
+1. `python -m ruff check .` 確認靜態檢查通過。
+2. `python train.py` 或 `python human_play.py` 進行訓練 / 對弈驗證。
+3. 提交前清理不必要的 `.model` 檔案；Git 版本庫已設定忽略。
 
 
 ## 參考資料
