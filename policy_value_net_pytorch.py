@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-An implementation of the policyValueNet in PyTorch
-Tested in PyTorch 0.2.0 and 0.3.0
+An implementation of the policyValueNet in PyTorch using ResNet architecture
+Optimized for Gomoku with configurable network parameters
 
-@author: Junxiao Song
+@author: Junxiao Song (original), enhanced with ResNet
 """
 
 import numpy as np
@@ -24,56 +24,99 @@ def set_learning_rate(optimizer, lr):
         param_group['lr'] = lr
 
 
+class ResidualBlock(nn.Module):
+    """A single residual block with two conv layers and skip connection"""
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(channels)
+
+    def forward(self, x):
+        residual = x
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += residual  # skip connection
+        out = F.relu(out)
+        return out
+
+
 class Net(nn.Module):
-    """policy-value network module"""
-    def __init__(self, board_width, board_height):
+    """ResNet-based policy-value network for AlphaZero"""
+    def __init__(self, board_width, board_height, num_channels=128, num_res_blocks=6):
         super(Net, self).__init__()
 
         self.board_width = board_width
         self.board_height = board_height
-        # common layers
-        self.conv1 = nn.Conv2d(4, 32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        # action policy layers
-        self.act_conv1 = nn.Conv2d(128, 4, kernel_size=1)
-        self.act_fc1 = nn.Linear(4*board_width*board_height,
-                                 board_width*board_height)
-        # state value layers
-        self.val_conv1 = nn.Conv2d(128, 2, kernel_size=1)
-        self.val_fc1 = nn.Linear(2*board_width*board_height, 64)
-        self.val_fc2 = nn.Linear(64, 1)
+        self.num_channels = num_channels
+
+        # Initial convolution block
+        self.conv_initial = nn.Conv2d(4, num_channels, kernel_size=3, padding=1, bias=False)
+        self.bn_initial = nn.BatchNorm2d(num_channels)
+
+        # Residual tower
+        self.res_blocks = nn.ModuleList([
+            ResidualBlock(num_channels) for _ in range(num_res_blocks)
+        ])
+
+        # Policy head
+        self.policy_conv = nn.Conv2d(num_channels, 4, kernel_size=1, bias=False)
+        self.policy_bn = nn.BatchNorm2d(4)
+        self.policy_fc = nn.Linear(4 * board_width * board_height, board_width * board_height)
+
+        # Value head
+        self.value_conv = nn.Conv2d(num_channels, 2, kernel_size=1, bias=False)
+        self.value_bn = nn.BatchNorm2d(2)
+        self.value_fc1 = nn.Linear(2 * board_width * board_height, 128)
+        self.value_fc2 = nn.Linear(128, 64)
+        self.value_fc3 = nn.Linear(64, 1)
 
     def forward(self, state_input):
-        # common layers
-        x = F.relu(self.conv1(state_input))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        # action policy layers
-        x_act = F.relu(self.act_conv1(x))
-        x_act = x_act.view(-1, 4*self.board_width*self.board_height)
-        x_act = F.log_softmax(self.act_fc1(x_act), dim=1)
-        # state value layers
-        x_val = F.relu(self.val_conv1(x))
-        x_val = x_val.view(-1, 2*self.board_width*self.board_height)
-        x_val = F.relu(self.val_fc1(x_val))
-        x_val = F.tanh(self.val_fc2(x_val))
-        return x_act, x_val
+        # Initial block
+        x = F.relu(self.bn_initial(self.conv_initial(state_input)))
+
+        # Residual tower
+        for res_block in self.res_blocks:
+            x = res_block(x)
+
+        # Policy head
+        p = F.relu(self.policy_bn(self.policy_conv(x)))
+        p = p.view(-1, 4 * self.board_width * self.board_height)
+        p = F.log_softmax(self.policy_fc(p), dim=1)
+
+        # Value head
+        v = F.relu(self.value_bn(self.value_conv(x)))
+        v = v.view(-1, 2 * self.board_width * self.board_height)
+        v = F.relu(self.value_fc1(v))
+        v = F.relu(self.value_fc2(v))
+        v = torch.tanh(self.value_fc3(v))
+
+        return p, v
 
 
 class PolicyValueNet():
     """policy-value network """
     def __init__(self, board_width, board_height,
-                 model_file=None, use_gpu=False):
+                 model_file=None, use_gpu=False,
+                 num_channels=128, num_res_blocks=6):
         self.use_gpu = use_gpu
         self.board_width = board_width
         self.board_height = board_height
         self.l2_const = 1e-4  # coef of l2 penalty
         # the policy value net module
         if self.use_gpu:
-            self.policy_value_net = Net(board_width, board_height).cuda()
+            self.policy_value_net = Net(
+                board_width, board_height,
+                num_channels=num_channels,
+                num_res_blocks=num_res_blocks
+            ).cuda()
         else:
-            self.policy_value_net = Net(board_width, board_height)
+            self.policy_value_net = Net(
+                board_width, board_height,
+                num_channels=num_channels,
+                num_res_blocks=num_res_blocks
+            )
         self.optimizer = optim.Adam(self.policy_value_net.parameters(),
                                     weight_decay=self.l2_const)
 
