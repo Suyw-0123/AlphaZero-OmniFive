@@ -51,6 +51,24 @@ class BoardConfig:
 
 
 @dataclass(frozen=True)
+class NetworkConfig:
+    num_channels: int = 128
+    num_res_blocks: int = 6
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any] | None) -> "NetworkConfig":
+        default = cls()
+        data = data or {}
+        num_channels = _ensure_positive(
+            int(data.get("num_channels", default.num_channels)), "network.num_channels"
+        )
+        num_res_blocks = _ensure_positive(
+            int(data.get("num_res_blocks", default.num_res_blocks)), "network.num_res_blocks"
+        )
+        return cls(num_channels=num_channels, num_res_blocks=num_res_blocks)
+
+
+@dataclass(frozen=True)
 class TrainingConfig:
     learn_rate: float = 2e-3
     lr_multiplier: float = 1.0
@@ -148,6 +166,7 @@ class HumanPlayConfig:
 @dataclass(frozen=True)
 class AppConfig:
     board: BoardConfig
+    network: NetworkConfig
     training: TrainingConfig
     human: HumanPlayConfig
 
@@ -171,9 +190,10 @@ def load_config(path: str | Path = _DEFAULT_CONFIG_PATH) -> AppConfig:
     config_path = Path(path)
     raw = _load_raw_config(config_path)
     board = BoardConfig.from_dict(raw.get("board"))
+    network = NetworkConfig.from_dict(raw.get("network"))
     training = TrainingConfig.from_dict(raw.get("training"))
     human = HumanPlayConfig.from_dict(raw.get("human"))
-    return AppConfig(board=board, training=training, human=human)
+    return AppConfig(board=board, network=network, training=training, human=human)
 
 
 __all__ = [
@@ -181,6 +201,7 @@ __all__ = [
     "BoardConfig",
     "ConfigError",
     "HumanPlayConfig",
+    "NetworkConfig",
     "TrainingConfig",
     "load_config",
 ]
