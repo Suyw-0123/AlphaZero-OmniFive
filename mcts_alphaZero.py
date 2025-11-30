@@ -194,7 +194,7 @@ class MCTSPlayer(object):
                 # self-play training)
                 move = np.random.choice(
                     acts,
-                    p=0.75*probs + 0.25*np.random.dirichlet(0.3*np.ones(len(probs)))
+                    p=0.75*probs + 0.25*np.random.dirichlet(0.1*np.ones(len(probs)))
                 )
                 # update the root node and reuse the search tree
                 self.mcts.update_with_move(move)
