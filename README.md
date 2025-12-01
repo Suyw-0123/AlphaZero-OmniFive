@@ -84,6 +84,20 @@ Output models:
 | `kl_targ` | Target KL divergence, limiting policy change between old and new, working with `lr_multiplier` to control step size. |
 | `check_freq` | Frequency (in batches) for MCTS evaluation and model saving. |
 | `game_batch_num` | Training loop upper limit; Ctrl+C saves the current best model. |
+| `pure_mcts_playout_num` | Number of simulations for the pure MCTS opponent during evaluation. Higher values make evaluation stricter. |
+| `use_gpu` | Whether to use GPU acceleration for training and inference. |
+| `init_model` | Path to the initial model file to resume training from a checkpoint. |
+
+
+### Human Play Configuration
+
+| Parameter | Description |
+| --- | --- |
+| `model_file` | Path to the model file used for human vs AI games. |
+| `start_player` | Set to 0 for human first, 1 for AI first. |
+| `n_playout` | Number of MCTS simulations per move for the AI during human play. |
+| `c_puct` | MCTS exploration coefficient for human play. |
+| `use_gpu` | Whether to use GPU acceleration for inference during human play. |
 
 > **GPU Memory Optimization**: Adjust `batch_size`, `num_channels`, and `num_res_blocks` according to your GPU memory. Lower values reduce model size and memory usage.
 
