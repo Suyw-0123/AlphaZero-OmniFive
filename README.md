@@ -2,12 +2,23 @@
 
 AlphaZero-OmniFive applies the AlphaZero algorithm to Gomoku (Five in a Row), training a policy-value network purely through self-play data combined with Monte Carlo Tree Search (MCTS) for decision-making. Since Gomoku's state space is much smaller than Go or Chess, a competitive AI can be trained in just a few hours on a PC with a CUDA-enabled GPU.
 
-This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZero_Gomoku.git),And make the following modifications:
+This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZero_Gomoku.git), and makes the following modifications:
+
+**Original Enhancements:**
 - Changed the network architecture from CNN to ResNet
 - Optimized MCTS and self-play modules by leveraging PyTorch CUDA acceleration
 - Tuned training parameters specifically for large boards of size 9x9 and above
 - Added the models trained using this parameter
 - Added a new config.json file for centralized parameter management
+
+**Latest Optimizations (New):**
+- 🔥 **Squeeze-and-Excitation (SE) Blocks**: Channel attention mechanism for improved feature learning
+- 🎯 **First Play Urgency (FPU)**: Enhanced MCTS exploration strategy for unvisited nodes
+- 🛡️ **Gradient Clipping**: Training stability improvement preventing gradient explosion
+- 📈 **Learning Rate Warmup**: Smoother training initialization phase
+- 🔧 **Dropout Regularization**: Configurable dropout for preventing overfitting
+- ⚡ **Virtual Loss Infrastructure**: Preparation for parallel MCTS simulations
+- 📋 **Configuration Presets**: Ready-to-use optimized configs for different scenarios
 
 #### Differences Between AlphaGo and AlphaGo Zero
 
@@ -38,8 +49,17 @@ python human_play.py
 ## Train the Model
 
 ```bash
+# Using default config
 python train.py
+
+# Or use one of the optimized presets
+python train.py --config configs/small_board_optimized.json
+python train.py --config configs/large_board_optimized.json
+python train.py --config configs/fast_training.json
+python train.py --config configs/maximum_strength.json
 ```
+
+**See [configs/README.md](configs/README.md) for detailed preset descriptions and customization tips.**
 
 Training workflow includes:
 
