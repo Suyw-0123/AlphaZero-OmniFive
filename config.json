@@ -6,7 +6,10 @@
   },
   "network": {
     "num_channels": 256,
-    "num_res_blocks": 4
+    "num_res_blocks": 4,
+    "use_se": true,
+    "dropout_rate": 0.1,
+    "l2_const": 1e-4
   },
   "training": {
     "learn_rate": 0.002,
@@ -14,6 +17,7 @@
     "temp": 1.0,
     "n_playout": 800,
     "c_puct": 5,
+    "fpu_reduction": 0.25,
     "buffer_size": 50000,
     "batch_size": 512,
     "play_batch_size": 4,
@@ -23,13 +27,17 @@
     "game_batch_num": 50000000,
     "pure_mcts_playout_num": 1000,
     "use_gpu": true,
-    "init_model": ""
+    "init_model": "",
+    "grad_clip": 5.0,
+    "lr_warmup_steps": 1000,
+    "use_cosine_annealing": false
   },
   "human_play": {
     "model_file": "best_policy_11_11_5.model",
     "start_player": 0,
     "n_playout": 3000,
     "c_puct": 4,
+    "fpu_reduction": 0.25,
     "use_gpu": true
   }
 }

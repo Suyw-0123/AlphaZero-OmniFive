@@ -67,6 +67,9 @@ Output models:
 | --- | --- |
 | `num_channels` | Number of feature channels in residual blocks. Higher values increase model capacity. |
 | `num_res_blocks` | Number of residual blocks in the tower. More blocks enable deeper feature extraction. |
+| `use_se` | Enable Squeeze-and-Excitation blocks for channel attention (default: true). Improves feature representation. |
+| `dropout_rate` | Dropout rate for regularization (default: 0.1). Range: [0, 1). Prevents overfitting. |
+| `l2_const` | L2 regularization coefficient (default: 1e-4). Weight decay for model parameters. |
 
 ### Training Configuration
 
@@ -77,6 +80,7 @@ Output models:
 | `temp` | Temperature during self-play, controlling move exploration; can be lowered later to reduce randomness. |
 | `n_playout` | Number of MCTS simulations per move. Higher values increase strength but also inference time. |
 | `c_puct` | MCTS exploration coefficient, balancing high visit counts and high-scoring nodes. |
+| `fpu_reduction` | First Play Urgency reduction factor (default: 0.25). Balances exploration of unvisited nodes. |
 | `buffer_size` | Self-play data buffer capacity; larger values retain more historical games for training. |
 | `batch_size` | Number of samples per gradient update. Adjust based on GPU memory. |
 | `play_batch_size` | Number of games generated per self-play round. |
@@ -87,6 +91,9 @@ Output models:
 | `pure_mcts_playout_num` | Number of simulations for the pure MCTS opponent during evaluation. Higher values make evaluation stricter. |
 | `use_gpu` | Whether to use GPU acceleration for training and inference. |
 | `init_model` | Path to the initial model file to resume training from a checkpoint. |
+| `grad_clip` | Gradient clipping threshold (default: 5.0). Prevents gradient explosion. Set to 0 to disable. |
+| `lr_warmup_steps` | Number of steps for learning rate warmup (default: 1000). Stabilizes early training. Set to 0 to disable. |
+| `use_cosine_annealing` | Enable cosine annealing learning rate schedule (default: false). For future implementation. |
 
 
 ### Human Play Configuration
@@ -97,7 +104,81 @@ Output models:
 | `start_player` | Set to 0 for human first, 1 for AI first. |
 | `n_playout` | Number of MCTS simulations per move for the AI during human play. |
 | `c_puct` | MCTS exploration coefficient for human play. |
+| `fpu_reduction` | First Play Urgency reduction factor for human play (default: 0.25). |
 | `use_gpu` | Whether to use GPU acceleration for inference during human play. |
+
+## Optimization Guide
+
+### New Optimizations in This Version
+
+This version includes several advanced optimizations to improve the Gomoku AI:
+
+#### 1. **Network Architecture Enhancements**
+- **Squeeze-and-Excitation (SE) Blocks**: Improves channel-wise feature representation through attention mechanisms. Enable with `use_se=true`.
+- **Dropout Regularization**: Prevents overfitting during training. Configure with `dropout_rate` (recommended: 0.1-0.3).
+- **Configurable L2 Regularization**: Fine-tune weight decay with `l2_const`.
+
+#### 2. **MCTS Improvements**
+- **First Play Urgency (FPU)**: Better exploration of unvisited nodes. Controlled by `fpu_reduction` parameter.
+- **Virtual Loss**: Prepared infrastructure for parallel MCTS simulations (reduces redundant exploration).
+
+#### 3. **Training Stability**
+- **Gradient Clipping**: Prevents gradient explosion with `grad_clip` parameter (recommended: 5.0).
+- **Learning Rate Warmup**: Stabilizes early training with `lr_warmup_steps` (recommended: 1000 steps).
+
+### Recommended Configurations
+
+#### For Smaller Boards (8x8 or less)
+```json
+{
+  "network": {
+    "num_channels": 128,
+    "num_res_blocks": 4,
+    "use_se": true,
+    "dropout_rate": 0.1
+  },
+  "training": {
+    "n_playout": 400,
+    "fpu_reduction": 0.25,
+    "grad_clip": 5.0,
+    "lr_warmup_steps": 500
+  }
+}
+```
+
+#### For Larger Boards (11x11 or more)
+```json
+{
+  "network": {
+    "num_channels": 256,
+    "num_res_blocks": 6,
+    "use_se": true,
+    "dropout_rate": 0.15
+  },
+  "training": {
+    "n_playout": 800,
+    "fpu_reduction": 0.3,
+    "grad_clip": 5.0,
+    "lr_warmup_steps": 1000
+  }
+}
+```
+
+#### For Fast Training (Limited GPU Memory)
+```json
+{
+  "network": {
+    "num_channels": 128,
+    "num_res_blocks": 3,
+    "use_se": false,
+    "dropout_rate": 0.0
+  },
+  "training": {
+    "batch_size": 256,
+    "n_playout": 400
+  }
+}
+```
 
 > **GPU Memory Optimization**: Adjust `batch_size`, `num_channels`, and `num_res_blocks` according to your GPU memory. Lower values reduce model size and memory usage.
 

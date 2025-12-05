@@ -24,27 +24,64 @@ def set_learning_rate(optimizer, lr):
         param_group['lr'] = lr
 
 
+class SEBlock(nn.Module):
+    """Squeeze-and-Excitation block for channel attention"""
+    def __init__(self, channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.squeeze = nn.AdaptiveAvgPool2d(1)
+        self.excitation = nn.Sequential(
+            nn.Linear(channels, channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // reduction, channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.squeeze(x).view(b, c)
+        y = self.excitation(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+
 class ResidualBlock(nn.Module):
-    """A single residual block with two conv layers and skip connection"""
-    def __init__(self, channels):
+    """Enhanced residual block with SE attention and optional dropout"""
+    def __init__(self, channels, use_se=True, dropout_rate=0.0):
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(channels)
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(channels)
+        
+        # Add SE block for channel attention
+        self.use_se = use_se
+        if use_se:
+            self.se = SEBlock(channels)
+        
+        # Optional dropout for regularization
+        self.dropout = nn.Dropout2d(dropout_rate) if dropout_rate > 0 else None
 
     def forward(self, x):
         residual = x
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
+        
+        # Apply SE attention
+        if self.use_se:
+            out = self.se(out)
+        
+        # Apply dropout if configured
+        if self.dropout is not None:
+            out = self.dropout(out)
+        
         out += residual  # skip connection
         out = F.relu(out)
         return out
 
 
 class Net(nn.Module):
-    """ResNet-based policy-value network for AlphaZero"""
-    def __init__(self, board_width, board_height, num_channels=128, num_res_blocks=6):
+    """Enhanced ResNet-based policy-value network for AlphaZero with SE blocks"""
+    def __init__(self, board_width, board_height, num_channels=128, num_res_blocks=6, 
+                 use_se=True, dropout_rate=0.0):
         super(Net, self).__init__()
 
         self.board_width = board_width
@@ -55,9 +92,10 @@ class Net(nn.Module):
         self.conv_initial = nn.Conv2d(4, num_channels, kernel_size=3, padding=1, bias=False)
         self.bn_initial = nn.BatchNorm2d(num_channels)
 
-        # Residual tower
+        # Residual tower with optional SE blocks and dropout
         self.res_blocks = nn.ModuleList([
-            ResidualBlock(num_channels) for _ in range(num_res_blocks)
+            ResidualBlock(num_channels, use_se=use_se, dropout_rate=dropout_rate) 
+            for _ in range(num_res_blocks)
         ])
 
         # Policy head
@@ -96,26 +134,31 @@ class Net(nn.Module):
 
 
 class PolicyValueNet():
-    """policy-value network """
+    """Enhanced policy-value network with optimization options"""
     def __init__(self, board_width, board_height,
                  model_file=None, use_gpu=False,
-                 num_channels=128, num_res_blocks=6):
+                 num_channels=128, num_res_blocks=6,
+                 use_se=True, dropout_rate=0.0, l2_const=1e-4):
         self.use_gpu = use_gpu
         self.board_width = board_width
         self.board_height = board_height
-        self.l2_const = 1e-4  # coef of l2 penalty
+        self.l2_const = l2_const  # coef of l2 penalty
         # the policy value net module
         if self.use_gpu:
             self.policy_value_net = Net(
                 board_width, board_height,
                 num_channels=num_channels,
-                num_res_blocks=num_res_blocks
+                num_res_blocks=num_res_blocks,
+                use_se=use_se,
+                dropout_rate=dropout_rate
             ).cuda()
         else:
             self.policy_value_net = Net(
                 board_width, board_height,
                 num_channels=num_channels,
-                num_res_blocks=num_res_blocks
+                num_res_blocks=num_res_blocks,
+                use_se=use_se,
+                dropout_rate=dropout_rate
             )
         self.optimizer = optim.Adam(self.policy_value_net.parameters(),
                                     weight_decay=self.l2_const)
@@ -171,8 +214,8 @@ class PolicyValueNet():
         act_probs = zip(legal_positions, act_probs[legal_positions])
         return act_probs, value
 
-    def train_step(self, state_batch, mcts_probs, winner_batch, lr):
-        """perform a training step"""
+    def train_step(self, state_batch, mcts_probs, winner_batch, lr, grad_clip=None):
+        """Perform a training step with optional gradient clipping"""
         # wrap in Variable
         state_np = np.array(state_batch)
         mcts_probs_np = np.array(mcts_probs)
@@ -200,6 +243,11 @@ class PolicyValueNet():
         loss = value_loss + policy_loss
         # backward and optimize
         loss.backward()
+        
+        # Apply gradient clipping if specified
+        if grad_clip is not None and grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(self.policy_value_net.parameters(), grad_clip)
+        
         self.optimizer.step()
         # calc policy entropy, for monitoring only
         entropy = -torch.mean(
