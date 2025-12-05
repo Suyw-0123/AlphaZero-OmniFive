@@ -192,7 +192,7 @@ def load_config(path: str | Path = _DEFAULT_CONFIG_PATH) -> AppConfig:
     board = BoardConfig.from_dict(raw.get("board"))
     network = NetworkConfig.from_dict(raw.get("network"))
     training = TrainingConfig.from_dict(raw.get("training"))
-    human = HumanPlayConfig.from_dict(raw.get("human"))
+    human = HumanPlayConfig.from_dict(raw.get("human_play"))
     return AppConfig(board=board, network=network, training=training, human=human)
 
 
