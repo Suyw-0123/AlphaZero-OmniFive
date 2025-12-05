@@ -246,7 +246,7 @@ class PolicyValueNet():
         loss.backward()
         
         # Apply gradient clipping if specified
-        if grad_clip is not None and grad_clip > 0:
+        if grad_clip is not None:
             torch.nn.utils.clip_grad_norm_(self.policy_value_net.parameters(), grad_clip)
         
         self.optimizer.step()

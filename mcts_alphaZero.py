@@ -93,10 +93,7 @@ class TreeNode(object):
             # Adjust Q by virtual loss for parallel MCTS
             # Use a more stable formulation: penalize Q proportionally to virtual loss
             effective_visits = self._n_visits + self._virtual_loss
-            if effective_visits > 0:
-                q_value = (self._Q * self._n_visits) / effective_visits
-            else:
-                q_value = self._Q
+            q_value = (self._Q * self._n_visits) / effective_visits
             return q_value + self._u
 
     def is_leaf(self):

@@ -114,14 +114,18 @@ class TrainPipeline():
             self.data_buffer.extend(play_data)
 
     def policy_update(self):
-        """Update the policy-value net with optional warmup and gradient clipping"""
+        """Update the policy-value net with optional warmup and gradient clipping
+        
+        Note: This method is called once per batch. The training_steps counter tracks
+        the number of batches (not individual gradient steps within epochs).
+        """
         mini_batch = random.sample(self.data_buffer, self.batch_size)
         state_batch = [data[0] for data in mini_batch]
         mcts_probs_batch = [data[1] for data in mini_batch]
         winner_batch = [data[2] for data in mini_batch]
         old_probs, old_v = self.policy_value_net.policy_value(state_batch)
         
-        # Apply learning rate warmup if configured (once per batch, not per epoch)
+        # Apply learning rate warmup if configured (counted per batch update, not per epoch)
         self.training_steps += 1
         if self.lr_warmup_steps > 0 and self.training_steps <= self.lr_warmup_steps:
             warmup_factor = max(0.01, self.training_steps / self.lr_warmup_steps)
