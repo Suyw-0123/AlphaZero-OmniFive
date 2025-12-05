@@ -72,10 +72,14 @@ def run(config_path="config.json"):
                                      model_file=model_file,
                                      use_gpu=use_gpu,
                                      num_channels=network_cfg.num_channels,
-                                     num_res_blocks=network_cfg.num_res_blocks)
+                                     num_res_blocks=network_cfg.num_res_blocks,
+                                     use_se=network_cfg.use_se,
+                                     dropout_rate=network_cfg.dropout_rate,
+                                     l2_const=network_cfg.l2_const)
         mcts_player = MCTSPlayer(best_policy.policy_value_fn,
                                  c_puct=human_cfg.c_puct,
-                                 n_playout=human_cfg.n_playout)
+                                 n_playout=human_cfg.n_playout,
+                                 fpu_reduction=human_cfg.fpu_reduction)
 
         # uncomment the following line to play with pure MCTS (it's much weaker even with a larger n_playout)
         # mcts_player = MCTS_Pure(c_puct=5, n_playout=1000)

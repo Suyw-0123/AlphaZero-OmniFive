@@ -1,31 +1,31 @@
 {
   "board": {
-    "width": 11,
-    "height": 11,
+    "width": 15,
+    "height": 15,
     "n_in_row": 5
   },
   "network": {
     "num_channels": 256,
-    "num_res_blocks": 4,
+    "num_res_blocks": 6,
     "use_se": true,
-    "dropout_rate": 0.1,
+    "dropout_rate": 0.15,
     "l2_const": 1e-4
   },
   "training": {
     "learn_rate": 0.002,
     "lr_multiplier": 1.0,
     "temp": 1.0,
-    "n_playout": 800,
+    "n_playout": 1000,
     "c_puct": 5,
-    "fpu_reduction": 0.25,
-    "buffer_size": 50000,
+    "fpu_reduction": 0.3,
+    "buffer_size": 60000,
     "batch_size": 512,
-    "play_batch_size": 4,
+    "play_batch_size": 2,
     "epochs": 5,
     "kl_targ": 0.02,
     "check_freq": 100,
     "game_batch_num": 50000000,
-    "pure_mcts_playout_num": 1000,
+    "pure_mcts_playout_num": 1500,
     "use_gpu": true,
     "init_model": "",
     "grad_clip": 5.0,
@@ -33,11 +33,11 @@
     "use_cosine_annealing": false
   },
   "human_play": {
-    "model_file": "best_policy_11_11_5.model",
+    "model_file": "best_policy_15_15_5.model",
     "start_player": 0,
     "n_playout": 3000,
     "c_puct": 4,
-    "fpu_reduction": 0.25,
+    "fpu_reduction": 0.3,
     "use_gpu": true
   }
 }
