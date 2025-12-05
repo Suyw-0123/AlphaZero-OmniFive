@@ -40,7 +40,8 @@ class SEBlock(nn.Module):
         b, c, _, _ = x.size()
         y = self.squeeze(x).view(b, c)
         y = self.excitation(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
+        # Use broadcasting instead of expand_as for efficiency
+        return x * y
 
 
 class ResidualBlock(nn.Module):

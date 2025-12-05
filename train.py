@@ -121,15 +121,15 @@ class TrainPipeline():
         winner_batch = [data[2] for data in mini_batch]
         old_probs, old_v = self.policy_value_net.policy_value(state_batch)
         
+        # Apply learning rate warmup if configured (once per batch, not per epoch)
+        self.training_steps += 1
+        if self.lr_warmup_steps > 0 and self.training_steps <= self.lr_warmup_steps:
+            warmup_factor = max(0.01, self.training_steps / self.lr_warmup_steps)
+            current_lr = self.learn_rate * self.lr_multiplier * warmup_factor
+        else:
+            current_lr = self.learn_rate * self.lr_multiplier
+        
         for i in range(self.epochs):
-            self.training_steps += 1
-            
-            # Apply learning rate warmup if configured
-            if self.lr_warmup_steps > 0 and self.training_steps <= self.lr_warmup_steps:
-                warmup_factor = self.training_steps / self.lr_warmup_steps
-                current_lr = self.learn_rate * self.lr_multiplier * warmup_factor
-            else:
-                current_lr = self.learn_rate * self.lr_multiplier
             
             loss, entropy = self.policy_value_net.train_step(
                     state_batch,
