@@ -150,7 +150,14 @@ class MCTS(object):
         act_visits = [(act, node._n_visits)
                       for act, node in self._root._children.items()]
         acts, visits = zip(*act_visits)
-        act_probs = softmax(1.0/temp * np.log(np.array(visits) + 1e-10))
+        visits = np.array(visits)
+        # If temp==0, return one-hot probability for argmax visit (deterministic)
+        if temp == 0:
+            probs = np.zeros_like(visits, dtype=float)
+            probs[np.argmax(visits)] = 1.0
+            act_probs = probs
+        else:
+            act_probs = softmax(1.0/temp * np.log(visits + 1e-10))
 
         return acts, act_probs
 
@@ -172,9 +179,12 @@ class MCTSPlayer(object):
     """AI player based on MCTS"""
 
     def __init__(self, policy_value_function,
-                 c_puct=5, n_playout=2000, is_selfplay=0):
+                 c_puct=5, n_playout=2000, is_selfplay=0,
+                 dirichlet_alpha=0.03, dirichlet_weight=0.25):
         self.mcts = MCTS(policy_value_function, c_puct, n_playout)
         self._is_selfplay = is_selfplay
+        self._dirichlet_alpha = dirichlet_alpha
+        self._dirichlet_weight = dirichlet_weight
 
     def set_player_ind(self, p):
         self.player = p
@@ -192,10 +202,9 @@ class MCTSPlayer(object):
             if self._is_selfplay:
                 # add Dirichlet Noise for exploration (needed for
                 # self-play training)
-                move = np.random.choice(
-                    acts,
-                    p=0.75*probs + 0.25*np.random.dirichlet(0.1*np.ones(len(probs)))
-                )
+                noise = np.random.dirichlet(self._dirichlet_alpha * np.ones(len(probs)))
+                noisy_probs = (1 - self._dirichlet_weight) * probs + self._dirichlet_weight * noise
+                move = np.random.choice(acts, p=noisy_probs)
                 # update the root node and reuse the search tree
                 self.mcts.update_with_move(move)
             else:

@@ -159,7 +159,7 @@ class Game(object):
                     print('_'.center(8), end='')
             print('\r\n\r\n')
 
-    def start_play(self, player1, player2, start_player=0, is_shown=1):
+    def start_play(self, player1, player2, start_player=0, is_shown=1, temp=1e-3):
         """start a game between two players"""
         if start_player not in (0, 1):
             raise Exception('start_player should be either 0 (player1 first) '
@@ -174,7 +174,11 @@ class Game(object):
         while True:
             current_player = self.board.get_current_player()
             player_in_turn = players[current_player]
-            move = player_in_turn.get_action(self.board)
+            # Apply temperature only to AI players that support it (Human does not take temp)
+            if hasattr(player_in_turn, 'get_action') and player_in_turn.__class__.__name__ != 'Human':
+                move = player_in_turn.get_action(self.board, temp=temp)
+            else:
+                move = player_in_turn.get_action(self.board)
             self.board.do_move(move)
             if is_shown:
                 self.graphic(self.board, player1.player, player2.player)
@@ -187,23 +191,50 @@ class Game(object):
                         print("Game end. Tie")
                 return winner
 
-    def start_self_play(self, player, is_shown=0, temp=1e-3):
+    def start_self_play(self, player, is_shown=0, temp=1e-3, temp_schedule=None, force_center_first=False):
         """ start a self-play game using a MCTS player, reuse the search tree,
         and store the self-play data: (state, mcts_probs, z) for training
         """
         self.board.init_board()
         p1, p2 = self.board.players
         states, mcts_probs, current_players = [], [], []
+        move_idx = 0
+        # Calculate center position
+        center_move = (self.board.height // 2) * self.board.width + (self.board.width // 2)
         while True:
-            move, move_probs = player.get_action(self.board,
-                                                 temp=temp,
-                                                 return_prob=1)
+            # Force first move to center if enabled
+            if move_idx == 0 and force_center_first and center_move in self.board.availables:
+                move = center_move
+                # Create one-hot probability for center move
+                move_probs = np.zeros(self.board.width * self.board.height)
+                move_probs[move] = 1.0
+            else:
+                # Compute per-move temperature according to schedule if provided
+                if temp_schedule is None:
+                    temp_for_move = temp
+                else:
+                    warm_moves = temp_schedule.warm_moves
+                    start_temp = temp_schedule.start_temp
+                    end_temp = temp_schedule.end_temp
+                    if temp_schedule.decay == "linear":
+                        if move_idx >= warm_moves:
+                            temp_for_move = end_temp
+                        else:
+                            frac = move_idx / float(warm_moves)
+                            temp_for_move = start_temp + (end_temp - start_temp) * frac
+                    else:  # step
+                        temp_for_move = start_temp if move_idx < warm_moves else end_temp
+                    temp_for_move = max(0.0, temp_for_move)
+                move, move_probs = player.get_action(self.board,
+                                                     temp=temp_for_move,
+                                                     return_prob=1)
             # store the data
             states.append(self.board.current_state())
             mcts_probs.append(move_probs)
             current_players.append(self.board.current_player)
             # perform a move
             self.board.do_move(move)
+            move_idx += 1
             if is_shown:
                 self.graphic(self.board, p1, p2)
             end, winner = self.board.game_end()

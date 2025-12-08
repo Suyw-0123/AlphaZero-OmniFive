@@ -84,7 +84,7 @@ def run(config_path="config.json"):
         human = Human()
 
         # set start_player=0 for human first
-        game.start_play(human, mcts_player, start_player=human_cfg.start_player, is_shown=1)
+        game.start_play(human, mcts_player, start_player=human_cfg.start_player, is_shown=1, temp=human_cfg.temp)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Model file '{model_file}' not found. Run train.py to produce a PyTorch checkpoint before starting human_play."

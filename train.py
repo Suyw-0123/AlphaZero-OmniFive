@@ -38,6 +38,7 @@ class TrainPipeline():
         self.learn_rate = training_cfg.learn_rate
         self.lr_multiplier = training_cfg.lr_multiplier  # adaptively adjust the learning rate based on KL
         self.temp = training_cfg.temp  # the temperature param
+        self.temp_schedule = training_cfg.temp_schedule
         self.n_playout = training_cfg.n_playout  # num of simulations for each move
         self.c_puct = training_cfg.c_puct
         self.buffer_size = training_cfg.buffer_size
@@ -69,7 +70,9 @@ class TrainPipeline():
         self.mcts_player = MCTSPlayer(self.policy_value_net.policy_value_fn,
                                       c_puct=self.c_puct,
                                       n_playout=self.n_playout,
-                                      is_selfplay=1)
+                                      is_selfplay=1,
+                                      dirichlet_alpha=training_cfg.dirichlet_alpha,
+                                      dirichlet_weight=training_cfg.dirichlet_weight)
 
     def get_equi_data(self, play_data):
         """augment the data set by rotation and flipping
@@ -97,7 +100,8 @@ class TrainPipeline():
         """collect self-play data for training"""
         for i in range(n_games):
             winner, play_data = self.game.start_self_play(self.mcts_player,
-                                                          temp=self.temp)
+                                                          temp=self.temp,
+                                                          temp_schedule=self.temp_schedule)
             play_data = list(play_data)[:]
             self.episode_len = len(play_data)
             # augment the data

@@ -32,6 +32,37 @@ def _ensure_between(value: int, low: int, high: int, name: str) -> int:
     return value
 
 
+class TempScheduleConfig:
+    """Temperature schedule for self-play.
+
+    decay: "step" keeps start_temp for the first warm_moves then switches to end_temp.
+           "linear" linearly interpolates from start_temp to end_temp over warm_moves moves.
+    """
+
+    def __init__(self, warm_moves: int, start_temp: float, end_temp: float, decay: str):
+        self.warm_moves = warm_moves
+        self.start_temp = start_temp
+        self.end_temp = end_temp
+        self.decay = decay
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any] | None, default_start: float) -> "TempScheduleConfig | None":
+        if data is None:
+            # Default: first 15 moves at default_start, then 0 (step schedule)
+            return cls(warm_moves=15, start_temp=default_start, end_temp=0.0, decay="step")
+        warm_moves = _ensure_positive(int(data.get("warm_moves", 15)), "training.temp_schedule.warm_moves")
+        start_temp = float(data.get("start_temp", default_start))
+        if start_temp <= 0:
+            raise ConfigError(f"training.temp_schedule.start_temp must be > 0 (got {start_temp}).")
+        end_temp = float(data.get("end_temp", 0.0))
+        if end_temp < 0:
+            raise ConfigError(f"training.temp_schedule.end_temp must be >= 0 (got {end_temp}).")
+        decay = str(data.get("decay", "step")).strip().lower() or "step"
+        if decay not in {"step", "linear"}:
+            raise ConfigError("training.temp_schedule.decay must be one of ['step', 'linear'].")
+        return cls(warm_moves=warm_moves, start_temp=start_temp, end_temp=end_temp, decay=decay)
+
+
 @dataclass(frozen=True)
 class BoardConfig:
     width: int = 8
@@ -73,6 +104,9 @@ class TrainingConfig:
     learn_rate: float = 2e-3
     lr_multiplier: float = 1.0
     temp: float = 1.0
+    temp_schedule: "TempScheduleConfig | None" = None
+    dirichlet_alpha: float = 0.03  # Dirichlet noise alpha (lower = more peaked)
+    dirichlet_weight: float = 0.25  # Weight of noise vs policy (0.25 = 25% noise)
     n_playout: int = 900
     c_puct: int = 5
     buffer_size: int = 20000
@@ -99,6 +133,16 @@ class TrainingConfig:
         temp = float(data.get("temp", default.temp))
         if temp <= 0:
             raise ConfigError(f"training.temp must be > 0 (got {temp}).")
+        temp_schedule = TempScheduleConfig.from_dict(
+            data.get("temp_schedule"),
+            default_start=temp,
+        )
+        dirichlet_alpha = float(data.get("dirichlet_alpha", default.dirichlet_alpha))
+        if dirichlet_alpha <= 0:
+            raise ConfigError(f"training.dirichlet_alpha must be > 0 (got {dirichlet_alpha}).")
+        dirichlet_weight = float(data.get("dirichlet_weight", default.dirichlet_weight))
+        if not 0 <= dirichlet_weight <= 1:
+            raise ConfigError(f"training.dirichlet_weight must be in [0, 1] (got {dirichlet_weight}).")
         n_playout = _ensure_positive(int(data.get("n_playout", default.n_playout)), "training.n_playout")
         c_puct = _ensure_positive(int(data.get("c_puct", default.c_puct)), "training.c_puct")
         buffer_size = _ensure_positive(int(data.get("buffer_size", default.buffer_size)), "training.buffer_size")
@@ -118,6 +162,9 @@ class TrainingConfig:
             learn_rate=learn_rate,
             lr_multiplier=lr_multiplier,
             temp=temp,
+            temp_schedule=temp_schedule,
+            dirichlet_alpha=dirichlet_alpha,
+            dirichlet_weight=dirichlet_weight,
             n_playout=n_playout,
             c_puct=c_puct,
             buffer_size=buffer_size,
@@ -140,6 +187,7 @@ class HumanPlayConfig:
     n_playout: int = 400
     c_puct: int = 5
     use_gpu: bool = True
+    temp: float = 0.0  # deterministic by default for strength
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None) -> "HumanPlayConfig":
@@ -154,12 +202,16 @@ class HumanPlayConfig:
         n_playout = _ensure_positive(int(data.get("n_playout", default.n_playout)), "human_play.n_playout")
         c_puct = _ensure_positive(int(data.get("c_puct", default.c_puct)), "human_play.c_puct")
         use_gpu = bool(data.get("use_gpu", default.use_gpu))
+        temp = float(data.get("temp", default.temp))
+        if temp < 0:
+            raise ConfigError(f"human_play.temp must be >= 0 (got {temp}).")
         return cls(
             model_file=model_file,
             start_player=start_player,
             n_playout=n_playout,
             c_puct=c_puct,
             use_gpu=use_gpu,
+            temp=temp,
         )
 
 
@@ -200,6 +252,7 @@ __all__ = [
     "AppConfig",
     "BoardConfig",
     "ConfigError",
+    "TempScheduleConfig",
     "HumanPlayConfig",
     "NetworkConfig",
     "TrainingConfig",
