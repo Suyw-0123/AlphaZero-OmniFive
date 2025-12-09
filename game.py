@@ -174,8 +174,11 @@ class Game(object):
         while True:
             current_player = self.board.get_current_player()
             player_in_turn = players[current_player]
-            # Apply temperature only to AI players that support it (Human does not take temp)
-            if hasattr(player_in_turn, 'get_action') and player_in_turn.__class__.__name__ != 'Human':
+            # Apply temperature only to players that support it
+            # Check if get_action accepts 'temp' parameter
+            import inspect
+            sig = inspect.signature(player_in_turn.get_action)
+            if 'temp' in sig.parameters:
                 move = player_in_turn.get_action(self.board, temp=temp)
             else:
                 move = player_in_turn.get_action(self.board)
