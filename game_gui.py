@@ -180,7 +180,7 @@ class GameGUI:
             try:
                 self.root.quit()
                 self.root.destroy()
-            except:
+            except Exception:
                 pass
             import sys
             sys.exit(0)
