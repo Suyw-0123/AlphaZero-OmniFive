@@ -15,7 +15,7 @@ This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZer
 - **AlphaGo**: Combines expert game records, hand-crafted features, and move prediction with MCTS, further enhanced through self-play.
 - **AlphaGo Zero**: Starts from scratch using only game rules for self-play, employs residual convolutional networks to output both policy and value simultaneously with MCTS; abandons hand-crafted features and human game records for a simpler architecture with more efficient training and inference, surpassing AlphaGo in strength.
 
-![playout400](playout400.gif)
+![playout400](gomoku_demo.gif)
 
 #### System Requirements
 
