@@ -30,6 +30,7 @@ class GameController:
         self.ai_player = None
         self.game_running = False
         self.restart_requested = False
+        self.quit_requested = False
     
     def load_config(self):
         """Load configuration from file."""
@@ -93,6 +94,7 @@ class GameController:
         """Handle quit request."""
         self.game_running = False
         self.restart_requested = False
+        self.quit_requested = True
     
     def play_game(self, start_player):
         """Play a single game."""
@@ -113,7 +115,11 @@ class GameController:
             current_player = self.board.get_current_player()
             player_in_turn = players[current_player]
             
-            move = player_in_turn.get_action(self.board)
+            # Get move with temp=1e-10 (essentially 0) for AI to play deterministically
+            if hasattr(player_in_turn, 'is_human') and not player_in_turn.is_human:
+                move = player_in_turn.get_action(self.board, temp=1e-10)
+            else:
+                move = player_in_turn.get_action(self.board)
             
             if not self.game_running:
                 break
@@ -158,11 +164,12 @@ class GameController:
     
     def wait_for_restart_or_quit(self):
         """Wait for user to click restart or quit after game ends."""
-        while not self.restart_requested:
+        while not self.restart_requested and not self.quit_requested:
             try:
                 self.gui.root.update()
             except tk.TclError:
                 # Window was closed
+                self.quit_requested = True
                 break
 
 

@@ -174,10 +174,16 @@ class GameGUI:
     def _on_quit_click(self):
         """Handle quit button click."""
         if messagebox.askokcancel("Quit", "Are you sure you want to quit?"):
+            self.waiting_for_human = False  # Break out of waiting loop
             if self.on_quit:
                 self.on_quit()
-            self.root.quit()
-            self.root.destroy()
+            try:
+                self.root.quit()
+                self.root.destroy()
+            except:
+                pass
+            import sys
+            sys.exit(0)
     
     def update_board(self):
         """Update the board display."""

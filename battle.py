@@ -30,6 +30,7 @@ class BattleController:
         self.pure_mcts_player = None
         self.game_running = False
         self.restart_requested = False
+        self.quit_requested = False
         self.pure_mcts_playout = 1000
     
     def load_config(self):
@@ -97,6 +98,7 @@ class BattleController:
         """Handle quit request."""
         self.game_running = False
         self.restart_requested = False
+        self.quit_requested = True
     
     def play_game(self, start_player=0):
         """Play a single game."""
@@ -167,11 +169,12 @@ class BattleController:
     
     def wait_for_restart_or_quit(self):
         """Wait for user to click restart or quit after game ends."""
-        while not self.restart_requested:
+        while not self.restart_requested and not self.quit_requested:
             try:
                 self.gui.root.update()
             except tk.TclError:
                 # Window was closed
+                self.quit_requested = True
                 break
 
 
