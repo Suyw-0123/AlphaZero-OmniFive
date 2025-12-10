@@ -5,39 +5,39 @@
     "n_in_row": 5
   },
   "network": {
-    "num_channels": 256,
-    "num_res_blocks": 4,
-    "use_se": true,
-    "dropout_rate": 0.1,
+    "num_channels": 128,
+    "num_res_blocks": 3,
+    "use_se": false,
+    "dropout_rate": 0.0,
     "l2_const": 1e-4
   },
   "training": {
     "learn_rate": 0.002,
     "lr_multiplier": 1.0,
     "temp": 1.0,
-    "n_playout": 800,
+    "n_playout": 400,
     "c_puct": 5,
-    "fpu_reduction": 0.25,
-    "buffer_size": 50000,
-    "batch_size": 512,
+    "fpu_reduction": 0.2,
+    "buffer_size": 30000,
+    "batch_size": 256,
     "play_batch_size": 4,
-    "epochs": 5,
+    "epochs": 4,
     "kl_targ": 0.02,
-    "check_freq": 100,
+    "check_freq": 50,
     "game_batch_num": 50000000,
-    "pure_mcts_playout_num": 1000,
+    "pure_mcts_playout_num": 800,
     "use_gpu": true,
     "init_model": "",
     "grad_clip": 5.0,
-    "lr_warmup_steps": 1000,
+    "lr_warmup_steps": 500,
     "use_cosine_annealing": false
   },
   "human_play": {
     "model_file": "best_policy_11_11_5.model",
     "start_player": 0,
-    "n_playout": 3000,
+    "n_playout": 1500,
     "c_puct": 4,
-    "fpu_reduction": 0.25,
+    "fpu_reduction": 0.2,
     "use_gpu": true
   }
 }

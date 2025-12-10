@@ -54,6 +54,9 @@ class BoardConfig:
 class NetworkConfig:
     num_channels: int = 128
     num_res_blocks: int = 6
+    use_se: bool = True
+    dropout_rate: float = 0.0
+    l2_const: float = 1e-4
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None) -> "NetworkConfig":
@@ -65,7 +68,20 @@ class NetworkConfig:
         num_res_blocks = _ensure_positive(
             int(data.get("num_res_blocks", default.num_res_blocks)), "network.num_res_blocks"
         )
-        return cls(num_channels=num_channels, num_res_blocks=num_res_blocks)
+        use_se = bool(data.get("use_se", default.use_se))
+        dropout_rate = float(data.get("dropout_rate", default.dropout_rate))
+        if dropout_rate < 0 or dropout_rate >= 1:
+            raise ConfigError(f"network.dropout_rate must be in [0, 1) (got {dropout_rate}).")
+        l2_const = float(data.get("l2_const", default.l2_const))
+        if l2_const < 0:
+            raise ConfigError(f"network.l2_const must be >= 0 (got {l2_const}).")
+        return cls(
+            num_channels=num_channels,
+            num_res_blocks=num_res_blocks,
+            use_se=use_se,
+            dropout_rate=dropout_rate,
+            l2_const=l2_const
+        )
 
 
 @dataclass(frozen=True)
@@ -75,6 +91,7 @@ class TrainingConfig:
     temp: float = 1.0
     n_playout: int = 900
     c_puct: int = 5
+    fpu_reduction: float = 0.25
     buffer_size: int = 20000
     batch_size: int = 768
     play_batch_size: int = 2
@@ -85,6 +102,9 @@ class TrainingConfig:
     pure_mcts_playout_num: int = 2000
     use_gpu: bool = True
     init_model: str | None = None
+    grad_clip: float = 0.0
+    lr_warmup_steps: int = 0
+    use_cosine_annealing: bool = False
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None) -> "TrainingConfig":
@@ -101,6 +121,9 @@ class TrainingConfig:
             raise ConfigError(f"training.temp must be > 0 (got {temp}).")
         n_playout = _ensure_positive(int(data.get("n_playout", default.n_playout)), "training.n_playout")
         c_puct = _ensure_positive(int(data.get("c_puct", default.c_puct)), "training.c_puct")
+        fpu_reduction = float(data.get("fpu_reduction", default.fpu_reduction))
+        if fpu_reduction < 0:
+            raise ConfigError(f"training.fpu_reduction must be >= 0 (got {fpu_reduction}).")
         buffer_size = _ensure_positive(int(data.get("buffer_size", default.buffer_size)), "training.buffer_size")
         batch_size = _ensure_positive(int(data.get("batch_size", default.batch_size)), "training.batch_size")
         play_batch_size = _ensure_positive(int(data.get("play_batch_size", default.play_batch_size)), "training.play_batch_size")
@@ -114,12 +137,20 @@ class TrainingConfig:
         use_gpu = bool(data.get("use_gpu", default.use_gpu))
         init_model_raw = data.get("init_model", default.init_model or "")
         init_model = str(init_model_raw).strip() or None
+        grad_clip = float(data.get("grad_clip", default.grad_clip))
+        if grad_clip < 0:
+            raise ConfigError(f"training.grad_clip must be >= 0 (got {grad_clip}).")
+        lr_warmup_steps = int(data.get("lr_warmup_steps", default.lr_warmup_steps))
+        if lr_warmup_steps < 0:
+            raise ConfigError(f"training.lr_warmup_steps must be >= 0 (got {lr_warmup_steps}).")
+        use_cosine_annealing = bool(data.get("use_cosine_annealing", default.use_cosine_annealing))
         return cls(
             learn_rate=learn_rate,
             lr_multiplier=lr_multiplier,
             temp=temp,
             n_playout=n_playout,
             c_puct=c_puct,
+            fpu_reduction=fpu_reduction,
             buffer_size=buffer_size,
             batch_size=batch_size,
             play_batch_size=play_batch_size,
@@ -130,6 +161,9 @@ class TrainingConfig:
             pure_mcts_playout_num=pure_mcts_playout_num,
             use_gpu=use_gpu,
             init_model=init_model,
+            grad_clip=grad_clip,
+            lr_warmup_steps=lr_warmup_steps,
+            use_cosine_annealing=use_cosine_annealing,
         )
 
 
@@ -139,6 +173,7 @@ class HumanPlayConfig:
     start_player: int = 1
     n_playout: int = 400
     c_puct: int = 5
+    fpu_reduction: float = 0.25
     use_gpu: bool = True
 
     @classmethod
@@ -153,12 +188,16 @@ class HumanPlayConfig:
         start_player = _ensure_between(start_player, 0, 1, "human_play.start_player")
         n_playout = _ensure_positive(int(data.get("n_playout", default.n_playout)), "human_play.n_playout")
         c_puct = _ensure_positive(int(data.get("c_puct", default.c_puct)), "human_play.c_puct")
+        fpu_reduction = float(data.get("fpu_reduction", default.fpu_reduction))
+        if fpu_reduction < 0:
+            raise ConfigError(f"human_play.fpu_reduction must be >= 0 (got {fpu_reduction}).")
         use_gpu = bool(data.get("use_gpu", default.use_gpu))
         return cls(
             model_file=model_file,
             start_player=start_player,
             n_playout=n_playout,
             c_puct=c_puct,
+            fpu_reduction=fpu_reduction,
             use_gpu=use_gpu,
         )
 

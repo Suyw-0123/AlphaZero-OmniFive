@@ -40,6 +40,7 @@ class TrainPipeline():
         self.temp = training_cfg.temp  # the temperature param
         self.n_playout = training_cfg.n_playout  # num of simulations for each move
         self.c_puct = training_cfg.c_puct
+        self.fpu_reduction = training_cfg.fpu_reduction
         self.buffer_size = training_cfg.buffer_size
         self.batch_size = training_cfg.batch_size  # mini-batch size for training
         self.data_buffer = deque(maxlen=self.buffer_size)
@@ -50,6 +51,10 @@ class TrainPipeline():
         self.game_batch_num = training_cfg.game_batch_num
         self.best_win_ratio = 0.0
         self.pure_mcts_playout_num = training_cfg.pure_mcts_playout_num
+        self.grad_clip = training_cfg.grad_clip
+        self.lr_warmup_steps = training_cfg.lr_warmup_steps
+        self.use_cosine_annealing = training_cfg.use_cosine_annealing
+        self.training_steps = 0  # Track training steps for warmup
 
         self._use_gpu = training_cfg.use_gpu
         if self._use_gpu and not torch.cuda.is_available():
@@ -65,11 +70,15 @@ class TrainPipeline():
                                                model_file=model_path,
                                                use_gpu=self._use_gpu,
                                                num_channels=network_cfg.num_channels,
-                                               num_res_blocks=network_cfg.num_res_blocks)
+                                               num_res_blocks=network_cfg.num_res_blocks,
+                                               use_se=network_cfg.use_se,
+                                               dropout_rate=network_cfg.dropout_rate,
+                                               l2_const=network_cfg.l2_const)
         self.mcts_player = MCTSPlayer(self.policy_value_net.policy_value_fn,
                                       c_puct=self.c_puct,
                                       n_playout=self.n_playout,
-                                      is_selfplay=1)
+                                      is_selfplay=1,
+                                      fpu_reduction=self.fpu_reduction)
 
     def get_equi_data(self, play_data):
         """augment the data set by rotation and flipping
@@ -105,18 +114,33 @@ class TrainPipeline():
             self.data_buffer.extend(play_data)
 
     def policy_update(self):
-        """update the policy-value net"""
+        """Update the policy-value net with optional warmup and gradient clipping
+        
+        Note: This method is called once per batch. The training_steps counter tracks
+        the number of batches (not individual gradient steps within epochs).
+        """
         mini_batch = random.sample(self.data_buffer, self.batch_size)
         state_batch = [data[0] for data in mini_batch]
         mcts_probs_batch = [data[1] for data in mini_batch]
         winner_batch = [data[2] for data in mini_batch]
         old_probs, old_v = self.policy_value_net.policy_value(state_batch)
+        
+        # Apply learning rate warmup if configured (counted per batch update, not per epoch)
+        self.training_steps += 1
+        if self.lr_warmup_steps > 0 and self.training_steps <= self.lr_warmup_steps:
+            warmup_factor = max(0.01, self.training_steps / self.lr_warmup_steps)
+            current_lr = self.learn_rate * self.lr_multiplier * warmup_factor
+        else:
+            current_lr = self.learn_rate * self.lr_multiplier
+        
         for i in range(self.epochs):
+            
             loss, entropy = self.policy_value_net.train_step(
                     state_batch,
                     mcts_probs_batch,
                     winner_batch,
-                    self.learn_rate*self.lr_multiplier)
+                    current_lr,
+                    grad_clip=self.grad_clip if self.grad_clip > 0 else None)
             new_probs, new_v = self.policy_value_net.policy_value(state_batch)
             kl = np.mean(np.sum(old_probs * (
                     np.log(old_probs + 1e-10) - np.log(new_probs + 1e-10)),
@@ -157,7 +181,8 @@ class TrainPipeline():
         """
         current_mcts_player = MCTSPlayer(self.policy_value_net.policy_value_fn,
                                          c_puct=self.c_puct,
-                                         n_playout=self.n_playout)
+                                         n_playout=self.n_playout,
+                                         fpu_reduction=self.fpu_reduction)
         pure_mcts_player = MCTS_Pure(c_puct=5,
                                      n_playout=self.pure_mcts_playout_num)
         win_cnt = defaultdict(int)

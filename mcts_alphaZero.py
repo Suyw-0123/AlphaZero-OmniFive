@@ -17,7 +17,7 @@ def softmax(x):
 
 
 class TreeNode(object):
-    """A node in the MCTS tree.
+    """Enhanced MCTS tree node with virtual loss and FPU support.
 
     Each node keeps track of its own value Q, prior probability P, and
     its visit-count-adjusted prior score u.
@@ -30,6 +30,7 @@ class TreeNode(object):
         self._Q = 0
         self._u = 0
         self._P = prior_p
+        self._virtual_loss = 0  # for parallel MCTS
 
     def expand(self, action_priors):
         """Expand tree by creating new children.
@@ -40,13 +41,13 @@ class TreeNode(object):
             if action not in self._children:
                 self._children[action] = TreeNode(self, prob)
 
-    def select(self, c_puct):
+    def select(self, c_puct, fpu_value=0.0):
         """Select action among children that gives maximum action value Q
-        plus bonus u(P).
+        plus bonus u(P). Uses First Play Urgency (FPU) for unvisited nodes.
         Return: A tuple of (action, next_node)
         """
         return max(self._children.items(),
-                   key=lambda act_node: act_node[1].get_value(c_puct))
+                   key=lambda act_node: act_node[1].get_value(c_puct, fpu_value))
 
     def update(self, leaf_value):
         """Update node values from leaf evaluation.
@@ -66,16 +67,34 @@ class TreeNode(object):
             self._parent.update_recursive(-leaf_value)
         self.update(leaf_value)
 
-    def get_value(self, c_puct):
-        """Calculate and return the value for this node.
+    def apply_virtual_loss(self):
+        """Apply virtual loss for parallel MCTS simulations"""
+        self._virtual_loss += 1
+
+    def revert_virtual_loss(self):
+        """Revert virtual loss after simulation completes"""
+        self._virtual_loss -= 1
+
+    def get_value(self, c_puct, fpu_value=0.0):
+        """Calculate and return the value for this node with FPU.
         It is a combination of leaf evaluations Q, and this node's prior
         adjusted for its visit count, u.
         c_puct: a number in (0, inf) controlling the relative impact of
             value Q, and prior probability P, on this node's score.
+        fpu_value: First Play Urgency value for unvisited nodes.
         """
         self._u = (c_puct * self._P *
                    np.sqrt(self._parent._n_visits) / (1 + self._n_visits))
-        return self._Q + self._u
+        
+        # Use FPU for unvisited nodes, otherwise use Q with virtual loss
+        if self._n_visits == 0:
+            return fpu_value + self._u
+        else:
+            # Adjust Q by virtual loss for parallel MCTS
+            # Use a more stable formulation: penalize Q proportionally to virtual loss
+            effective_visits = self._n_visits + self._virtual_loss
+            q_value = (self._Q * self._n_visits) / effective_visits
+            return q_value + self._u
 
     def is_leaf(self):
         """Check if leaf node (i.e. no nodes below this have been expanded)."""
@@ -86,9 +105,9 @@ class TreeNode(object):
 
 
 class MCTS(object):
-    """An implementation of Monte Carlo Tree Search."""
+    """Enhanced MCTS with FPU and virtual loss support."""
 
-    def __init__(self, policy_value_fn, c_puct=5, n_playout=10000):
+    def __init__(self, policy_value_fn, c_puct=5, n_playout=10000, fpu_reduction=0.25):
         """
         policy_value_fn: a function that takes in a board state and outputs
             a list of (action, probability) tuples and also a score in [-1, 1]
@@ -97,11 +116,13 @@ class MCTS(object):
         c_puct: a number in (0, inf) that controls how quickly exploration
             converges to the maximum-value policy. A higher value means
             relying on the prior more.
+        fpu_reduction: First Play Urgency reduction factor.
         """
         self._root = TreeNode(None, 1.0)
         self._policy = policy_value_fn
         self._c_puct = c_puct
         self._n_playout = n_playout
+        self._fpu_reduction = fpu_reduction
 
     def _playout(self, state):
         """Run a single playout from the root to the leaf, getting a value at
@@ -109,11 +130,20 @@ class MCTS(object):
         State is modified in-place, so a copy must be provided.
         """
         node = self._root
+        path = []  # Track path for virtual loss
+        
         while(1):
             if node.is_leaf():
                 break
-            # Greedily select next move.
-            action, node = node.select(self._c_puct)
+            # Apply virtual loss
+            node.apply_virtual_loss()
+            path.append(node)
+            
+            # Calculate FPU value based on parent Q
+            fpu_value = node._Q - self._fpu_reduction
+            
+            # Greedily select next move with FPU
+            action, node = node.select(self._c_puct, fpu_value)
             state.do_move(action)
 
         # Evaluate the leaf using a network which outputs a list of
@@ -135,6 +165,10 @@ class MCTS(object):
 
         # Update value and visit count of nodes in this traversal.
         node.update_recursive(-leaf_value)
+        
+        # Revert virtual loss for all nodes in path
+        for path_node in path:
+            path_node.revert_virtual_loss()
 
     def get_move_probs(self, state, temp=1e-3):
         """Run all playouts sequentially and return the available actions and
@@ -169,11 +203,11 @@ class MCTS(object):
 
 
 class MCTSPlayer(object):
-    """AI player based on MCTS"""
+    """AI player based on enhanced MCTS"""
 
     def __init__(self, policy_value_function,
-                 c_puct=5, n_playout=2000, is_selfplay=0):
-        self.mcts = MCTS(policy_value_function, c_puct, n_playout)
+                 c_puct=5, n_playout=2000, is_selfplay=0, fpu_reduction=0.25):
+        self.mcts = MCTS(policy_value_function, c_puct, n_playout, fpu_reduction)
         self._is_selfplay = is_selfplay
 
     def set_player_ind(self, p):
