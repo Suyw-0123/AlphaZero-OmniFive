@@ -2,7 +2,7 @@
 """
 An implementation of the training pipeline of AlphaZero for Gomoku
 
-@author: Junxiao Song
+@author: Suyw
 """
 
 from __future__ import print_function

@@ -3,7 +3,7 @@
 An implementation of the policyValueNet in PyTorch using ResNet architecture
 Optimized for Gomoku with configurable network parameters
 
-@author: Junxiao Song (original), enhanced with ResNet
+@author: Suyw
 """
 
 import numpy as np

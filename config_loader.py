@@ -3,6 +3,8 @@
 The configuration is stored in a simple JSON document.  This module exposes
 immutable dataclasses for each configuration section and validates the
 parameters at load time to keep the rest of the codebase lean and clean.
+
+@author: Suyw
 """
 
 from __future__ import annotations

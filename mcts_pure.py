@@ -2,7 +2,7 @@
 """
 A pure implementation of the Monte Carlo Tree Search (MCTS)
 
-@author: Junxiao Song
+@author: Suyw
 """
 
 import numpy as np

@@ -2,7 +2,7 @@
 """
 A script to pit the trained AlphaZero model against a pure MCTS player.
 
-@author: Junxiao Song (modified for AI vs AI battle)
+@author: Suyw (modified for AI vs AI battle)
 """
 
 from __future__ import print_function
