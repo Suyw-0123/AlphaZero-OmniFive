@@ -8,6 +8,7 @@ This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZer
 - Tuned training parameters specifically for large boards of size 9x9 and above
 - Added the models trained using this parameter
 - Added a new config.json file for centralized parameter management
+- Added GUI based on tkinter
 
 #### Differences Between AlphaGo and AlphaGo Zero
 
