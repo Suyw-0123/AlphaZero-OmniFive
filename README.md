@@ -17,11 +17,11 @@ This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZer
 
 ![playout400](gomoku_demo.gif)
 
-#### System Requirements
+#### System Requirements (The version I'm using)
 
-- Python >= 3.9
-- PyTorch >= 2.0 (CUDA-capable GPU driver environment required)
-- numpy >= 1.24
+- Python >= 3.13
+- PyTorch >= 2.9 (CUDA 12.8 required)
+- numpy >= 2.2
 
 #### Initial Setup
 
