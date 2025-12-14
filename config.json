@@ -1,7 +1,7 @@
 {
   "board": {
-    "width": 11,
-    "height": 11,
+    "width": 9,
+    "height": 9,
     "n_in_row": 5
   },
   "network": {
@@ -14,22 +14,22 @@
     "temp": 1.0,
     "n_playout": 800,
     "c_puct": 5,
-    "buffer_size": 50000,
+    "buffer_size": 100000,
     "batch_size": 512,
     "play_batch_size": 4,
     "epochs": 5,
     "kl_targ": 0.02,
-    "check_freq": 100,
+    "check_freq": 50,
     "game_batch_num": 50000000,
-    "pure_mcts_playout_num": 1000,
+    "pure_mcts_playout_num": 3000,
     "use_gpu": true,
     "init_model": ""
   },
   "human_play": {
-    "model_file": "best_policy_11_11_5.model",
+    "model_file": "best_policy_9_9_5_256x4/best_policy_900.model",
     "start_player": 1,
     "n_playout": 800,
-    "c_puct": 2.5,
+    "c_puct": 3,
     "use_gpu": true
   }
 }
