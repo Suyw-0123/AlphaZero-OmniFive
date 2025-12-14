@@ -31,7 +31,7 @@ class BattleController:
         self.game_running = False
         self.restart_requested = False
         self.quit_requested = False
-        self.pure_mcts_playout = 1000
+        self.pure_mcts_playout = 4000  # The higher n_playout, The higher difficulty pure mcts is
     
     def load_config(self):
         """Load configuration from file."""
