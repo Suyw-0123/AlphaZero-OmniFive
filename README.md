@@ -1,19 +1,25 @@
 # AlphaZero-OmniFive
 
+Here is the source code for other research methods: 
+ - [alpha-beta prunning](https://github.com/gamehanker/minimax)
+ - [muzero](https://github.com/Vress0/muzero-general)
+
 AlphaZero-OmniFive applies the AlphaZero algorithm to Gomoku (Five in a Row), training a policy-value network purely through self-play data combined with Monte Carlo Tree Search (MCTS) for decision-making. Since Gomoku's state space is much smaller than Go or Chess, a competitive AI can be trained in just a few hours on a PC with a CUDA-enabled GPU.
 
 This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZero_Gomoku.git),And make the following modifications:
 - Changed the network architecture from CNN to ResNet
 - Optimized MCTS and self-play modules by leveraging PyTorch CUDA acceleration
+- Added a new [config.json](config.json) file for centralized parameter management
+- Added GUI based on tkinter
+- Added feature [Zero Padding](zero_padding_feat/readme.md) for better performance
+- Added feature [dynamic_training_parameters](dynamic_training_params.py) for better performance
 - Tuned training parameters specifically for large boards of size 9x9 and above
 - Added the models trained using this parameter
-- Added a new config.json file for centralized parameter management
-- Added GUI based on tkinter
 
 #### Differences Between AlphaGo and AlphaGo Zero
 
 - **AlphaGo**: Combines expert game records, hand-crafted features, and move prediction with MCTS, further enhanced through self-play.
-- **AlphaGo Zero**: Starts from scratch using only game rules for self-play, employs residual convolutional networks to output both policy and value simultaneously with MCTS; abandons hand-crafted features and human game records for a simpler architecture with more efficient training and inference, surpassing AlphaGo in strength.
+- **AlphaZero**: Starts from scratch using only game rules for self-play, employs residual convolutional networks to output both policy and value simultaneously with MCTS; abandons hand-crafted features and human game records for a simpler architecture with more efficient training and inference, surpassing AlphaGo in strength.
 
 ![playout400](gomoku_demo.gif)
 
@@ -22,6 +28,7 @@ This repo is based on [AlphaZero_Gomoku](https://github.com/junxiaosong/AlphaZer
 - Python >= 3.13
 - PyTorch >= 2.9 (CUDA 12.8 required)
 - numpy >= 2.2
+> Otherwise, I'm used WSL2 as the platform for this project
 
 #### Initial Setup
 
@@ -36,6 +43,7 @@ cd AlphaZero-OmniFive
 python human_play.py
 ```
 > Before playing, you need to adjust the parameters in config.json to the appropriate chessboard size and Channel and Block used in ResNet training for the corresponding model.
+>  [full description here](description_for_human_play.md)
 
 ## Train the Model
 
@@ -132,3 +140,4 @@ You can adjust the battle parameters directly within the `battle.py` file:
 - Play, Learn, Conquer: The Journey to a Self-Improving Game AI (https://benlu.substack.com/p/play-learn-conquer-the-journey-to)
 - Silver et al., *Mastering the game of Go with deep neural networks and tree search* (Nature, 2016)
 - Silver et al., *Mastering the game of Go without human knowledge* (Nature, 2017)
+- **Special thanks to the reference materials, which were of great help to our training planning, appreciate.**
