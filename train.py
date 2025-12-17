@@ -16,6 +16,7 @@ from mcts_pure import MCTSPlayer as MCTS_Pure
 from mcts_alphaZero import MCTSPlayer
 from policy_value_net_pytorch import PolicyValueNet  # Pytorch
 from config_loader import load_config, ConfigError
+from dynamic_training_params import DynamicTrainingParams
 
 
 class TrainPipeline():
@@ -70,6 +71,16 @@ class TrainPipeline():
                                       c_puct=self.c_puct,
                                       n_playout=self.n_playout,
                                       is_selfplay=1)
+        
+        # Initialize dynamic training parameters
+        dynamic_config = {}
+        if hasattr(training_cfg, 'dynamic_params'):
+            dynamic_config = training_cfg.dynamic_params
+        self.dynamic_params = DynamicTrainingParams(dynamic_config)
+        print("\n" + "="*60)
+        print("Dynamic Training Parameters Initialized:")
+        print(self.dynamic_params)
+        print("="*60 + "\n")
 
     def get_equi_data(self, play_data):
         """augment the data set by rotation and flipping
@@ -177,9 +188,28 @@ class TrainPipeline():
         """run the training pipeline"""
         try:
             for i in range(self.game_batch_num):
+                # Update dynamic parameters for this batch
+                current_params = self.dynamic_params.get_all_params(i)
+                
+                # Update MCTS player with dynamic parameters
+                self.mcts_player = MCTSPlayer(
+                    self.policy_value_net.policy_value_fn,
+                    c_puct=current_params['c_puct'],
+                    n_playout=current_params['n_playout'],
+                    is_selfplay=1
+                )
+                self.temp = current_params['temperature']
+                
+                # Log dynamic parameters every 50 batches
+                if i % 50 == 0:
+                    self.dynamic_params.log_params(i)
+                
                 self.collect_selfplay_data(self.play_batch_size)
-                print("batch i:{}, episode_len:{}".format(
-                        i+1, self.episode_len))
+                print("batch i:{}, episode_len:{} [n_playout={}, c_puct={:.2f}, temp={:.3f}]".format(
+                        i+1, self.episode_len,
+                        current_params['n_playout'],
+                        current_params['c_puct'],
+                        current_params['temperature']))
                 if len(self.data_buffer) > self.batch_size:
                     loss, entropy = self.policy_update()
                 # check the performance of the current model,
