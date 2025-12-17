@@ -14,7 +14,7 @@
     "temp": 1.0,
     "n_playout": 800,
     "c_puct": 5,
-    "buffer_size": 100000,
+    "buffer_size": 500000,
     "batch_size": 512,
     "play_batch_size": 4,
     "epochs": 5,
@@ -23,13 +23,26 @@
     "game_batch_num": 50000000,
     "pure_mcts_playout_num": 3000,
     "use_gpu": true,
-    "init_model": ""
+    "init_model": "",
+    "dynamic_params": {
+      "enable_dynamic_playout": true,
+      "enable_dynamic_c_puct": true,
+      "enable_dynamic_temp": true,
+      "initial_n_playout": 400,
+      "final_n_playout": 1200,
+      "initial_c_puct": 5.0,
+      "final_c_puct": 2.5,
+      "initial_temp": 1.0,
+      "final_temp": 0.1,
+      "warmup_batches": 500,
+      "anneal_batches": 1000
+    }
   },
   "human_play": {
     "model_file": "best_policy_9_9_5_256x4/best_policy_900.model",
     "start_player": 1,
     "n_playout": 800,
-    "c_puct": 3,
+    "c_puct": 5,
     "use_gpu": true
   }
 }
