@@ -10,7 +10,10 @@
 - 這個修改會改變神經網路的輸入維度（4 → 5 通道）
 - 舊的 `.model` 檔案無法載入
 - 必須從零開始訓練新模型 (目前的現成模型在資料夾內，參數調整方法一樣)
-- 目前性能比較好的模型是 [best_policy_1050](best_policy_11_11_5_256x6/best_policy_1050.model)，參數設定: n_playout = 1000, c_puct = 6
+- 目前性能比較好的模型:
+  -  [best_policy_1050](best_policy_11_11_5_256x6/best_policy_1050.model)
+  -  [best_policy_1450](best_policy_11_11_5_256x6/best_policy_1450.model)
+  -  參數設定: n_playout = 1000, c_puct = 5
 
 ### 修改的檔案
 
