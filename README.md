@@ -42,14 +42,15 @@ cd AlphaZero-OmniFive
 ```bash
 python human_play.py
 ```
-> Before playing, you need to adjust the parameters in config.json to the appropriate chessboard size and Channel and Block used in ResNet training for the corresponding model.
->  [full description here](description_for_human_play.md)
+> Before playing, you need to adjust the parameters in config.json to the appropriate chessboard size and Channel and Block used in ResNet training for the corresponding model.[full description here](description_for_human_play.md)
+> [flowchart](flowcharts/human_play_flowchart.md)
 
 ## Train the Model
 
 ```bash
 python train.py
 ```
+> [flowchart](flowcharts/train_flowchart.md)
 
 Training workflow includes:
 
