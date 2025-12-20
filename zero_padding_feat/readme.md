@@ -1,5 +1,7 @@
 # Zero Padding Edge Detection
 
+- 12/20 開始訓練 15x15 棋盤
+
 ## 修改說明
 
 這個資料夾包含了實現 Zero Padding 邊緣偵測功能的修改檔案與其相容的現成模型。
@@ -16,6 +18,7 @@
   -  [best_policy_1750](zero_padding_feat/best_policy_11_11_5_256x6/best_policy_1750.model) (訓練了約莫 130 小時，這個異常強大，稍不留神就被反殺了)
   -  遊玩參數設定: n_playout = 1000, c_puct = 5
   -  這兩個模型強度是比常規方法的模型要強的
+
 
 ### 使用方式
 
