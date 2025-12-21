@@ -15,7 +15,8 @@
 - 目前性能比較好的模型:
   -  [best_policy_1050](best_policy_11_11_5_256x6/best_policy_1050.model)
   -  [best_policy_1450](best_policy_11_11_5_256x6/best_policy_1450.model)
-  -  [best_policy_1750](zero_padding_feat/best_policy_11_11_5_256x6/best_policy_1750.model) (訓練了約莫 130 小時，這個異常強大，稍不留神就被反殺了)
+  -  [best_policy_1750](zero_padding_feat/best_policy_11_11_5_256x6/best_policy_1750.model) 
+  -  [best_policy_2050](zero_padding_feat/best_policy_11_11_5_256x6/best_policy_2050.model)
   -  遊玩參數設定: n_playout = 1000, c_puct = 5
   -  這兩個模型強度是比常規方法的模型要強的
 
