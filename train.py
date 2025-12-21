@@ -38,9 +38,18 @@ class TrainPipeline():
         training_cfg = self._config.training
         self.learn_rate = training_cfg.learn_rate
         self.lr_multiplier = training_cfg.lr_multiplier  # adaptively adjust the learning rate based on KL
-        self.temp = training_cfg.temp  # the temperature param
-        self.n_playout = training_cfg.n_playout  # num of simulations for each move
-        self.c_puct = training_cfg.c_puct
+        
+        # Initialize dynamic training parameters first
+        dynamic_config = {}
+        if hasattr(training_cfg, 'dynamic_params') and training_cfg.dynamic_params:
+            dynamic_config = training_cfg.dynamic_params
+        self.dynamic_params = DynamicTrainingParams(dynamic_config)
+        
+        # Use initial values from dynamic params
+        self.temp = self.dynamic_params.initial_temp
+        self.n_playout = self.dynamic_params.initial_n_playout
+        self.c_puct = self.dynamic_params.initial_c_puct
+        
         self.buffer_size = training_cfg.buffer_size
         self.batch_size = training_cfg.batch_size  # mini-batch size for training
         self.data_buffer = deque(maxlen=self.buffer_size)
@@ -72,11 +81,6 @@ class TrainPipeline():
                                       n_playout=self.n_playout,
                                       is_selfplay=1)
         
-        # Initialize dynamic training parameters
-        dynamic_config = {}
-        if hasattr(training_cfg, 'dynamic_params'):
-            dynamic_config = training_cfg.dynamic_params
-        self.dynamic_params = DynamicTrainingParams(dynamic_config)
         print("\n" + "="*60)
         print("Dynamic Training Parameters Initialized:")
         print(self.dynamic_params)
@@ -161,14 +165,18 @@ class TrainPipeline():
                         explained_var_new))
         return loss, entropy
 
-    def policy_evaluate(self, n_games=10):
+    def policy_evaluate(self, n_games=10, current_batch=0):
         """
         Evaluate the trained policy by playing against the pure MCTS player
         Note: this is only for monitoring the progress of training
+        Uses current dynamic parameters for consistent evaluation
         """
+        # Get current dynamic parameters for evaluation
+        current_params = self.dynamic_params.get_all_params(current_batch)
+        
         current_mcts_player = MCTSPlayer(self.policy_value_net.policy_value_fn,
-                                         c_puct=self.c_puct,
-                                         n_playout=self.n_playout)
+                                         c_puct=current_params['c_puct'],
+                                         n_playout=current_params['n_playout'])
         pure_mcts_player = MCTS_Pure(c_puct=5,
                                      n_playout=self.pure_mcts_playout_num)
         win_cnt = defaultdict(int)
@@ -215,18 +223,28 @@ class TrainPipeline():
                 # check the performance of the current model,
                 # and save the model params
                 if (i+1) % self.check_freq == 0:
+                    print("\n" + "="*60)
                     print("current self-play batch: {}".format(i+1))
-                    win_ratio = self.policy_evaluate()
+                    print("Evaluating model performance...")
+                    win_ratio = self.policy_evaluate(current_batch=i)
+                    print(f"Win ratio: {win_ratio:.3f} vs best: {self.best_win_ratio:.3f}")
+                    
+                    print("Saving current_policy.model...")
                     self.policy_value_net.save_model('./current_policy.model')
+                    
                     if win_ratio > self.best_win_ratio:
                         print("New best policy!!!!!!!!")
                         self.best_win_ratio = win_ratio
+                        print("Saving best_policy.model...")
                         # update the best_policy
                         self.policy_value_net.save_model('./best_policy.model')
                         if (self.best_win_ratio == 1.0 and
                                 self.pure_mcts_playout_num < 5000):
                             self.pure_mcts_playout_num += 1000
                             self.best_win_ratio = 0.0
+                    else:
+                        print(f"Not updating best policy (win_ratio {win_ratio:.3f} <= {self.best_win_ratio:.3f})")
+                    print("="*60 + "\n")
         except KeyboardInterrupt:
             print('\n\rquit')
 

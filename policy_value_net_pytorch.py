@@ -213,5 +213,18 @@ class PolicyValueNet():
 
     def save_model(self, model_file):
         """ save model params to file """
-        net_params = self.get_policy_param()  # get model params
-        torch.save(net_params, model_file)
+        import os
+        try:
+            net_params = self.get_policy_param()  # get model params
+            torch.save(net_params, model_file)
+            # 驗證檔案確實被創建
+            if os.path.exists(model_file):
+                file_size = os.path.getsize(model_file)
+                print(f"✓ Model saved successfully: {model_file} ({file_size:,} bytes)")
+            else:
+                print(f"✗ WARNING: Model file not found after save: {model_file}")
+        except Exception as e:
+            print(f"✗ ERROR saving model to {model_file}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise

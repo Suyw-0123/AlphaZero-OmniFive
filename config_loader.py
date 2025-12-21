@@ -87,6 +87,7 @@ class TrainingConfig:
     pure_mcts_playout_num: int = 2000
     use_gpu: bool = True
     init_model: str | None = None
+    dynamic_params: dict | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any] | None) -> "TrainingConfig":
@@ -116,6 +117,7 @@ class TrainingConfig:
         use_gpu = bool(data.get("use_gpu", default.use_gpu))
         init_model_raw = data.get("init_model", default.init_model or "")
         init_model = str(init_model_raw).strip() or None
+        dynamic_params = data.get("dynamic_params", None)
         return cls(
             learn_rate=learn_rate,
             lr_multiplier=lr_multiplier,
@@ -132,6 +134,7 @@ class TrainingConfig:
             pure_mcts_playout_num=pure_mcts_playout_num,
             use_gpu=use_gpu,
             init_model=init_model,
+            dynamic_params=dynamic_params,
         )
 
 
